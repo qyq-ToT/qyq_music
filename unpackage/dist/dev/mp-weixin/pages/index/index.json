@@ -1,0 +1,7 @@
+{
+  "navigationStyle": "custom",
+  "usingComponents": {
+    "index": "/components/index/index",
+    "uni-icons": "/components/uni-icons/uni-icons"
+  }
+}
