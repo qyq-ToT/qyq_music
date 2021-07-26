@@ -6,10 +6,10 @@
 				<view class="titi">
 					<view class="top">
 						<div>VIP</div>
-						<div>{{songName}}</div>
+						<div class="text">{{songName}}</div>
 					</view>
 					<view class="bottom">
-						<div>{{singer}}</div>
+						<div class="text">{{singer}}</div>
 						<image src="https://t1.picb.cc/uploads/2020/09/16/tPxWO8.png"></image>
 					</view>
 				</view>
@@ -19,7 +19,7 @@
 			</view>
 		</view> 
 		<!-- :class="playFlag?'xuanzhuan':''" :class="dhFlag?'':'pause'" -->
-		<view class="content" :class="{xuanzhuan:playFlag,pause:!dhFlag}">
+		<view class="content" :class="{pause:!playFlag}">
 			<u-image width="100%" height="100%" border-radius="50%" :src="pic_url"></u-image>
 		</view>
 		<view class="footer">
@@ -41,9 +41,11 @@
 			https://t1.picb.cc/uploads/2020/09/15/tPBFKN.png
 			//随机播放
 			https://t1.picb.cc/uploads/2020/09/15/tPBTL7.png -->
-			<u-line-progress style="width: 94% !important;" :height="8" :show-percent="false" inactive-color="#ffffff" class="line" active-color="#05ffe8" :percent="70"></u-line-progress>
+			<slider style="width: 95vw;" activeColor="#F29100" block-size="14" :value="playDuration/duration*100" @change="sliderChange" step="1" />
+			<!-- <u-line-progress style="width: 94% !important;" :height="8" :show-percent="false" inactive-color="#ffffff" 
+			class="line" active-color="#05ffe8" :percent="playDuration/duration*100"></u-line-progress> -->
 			<view class="center">
-				<span>00:20</span> <span>{{duration}}</span>
+				<span>{{playDuration | timerGsh}}</span> <span>{{duration | timerGsh}}</span>
 			</view>
 			<view class="bottom">
 
@@ -79,7 +81,9 @@
 				playFlag:false,
 				//当前音乐时长
 				duration:"00:00",
-				dhFlag:this.playFlag
+				//播放时长
+				playDuration:0,
+				timer:null
 			}
 		},
 		onLoad(option) {
@@ -89,6 +93,28 @@
 			let thisSongID = this.songsDetail[this.songIndex].id;
 			this.getSongUrl(thisSongID);
 			this.getSongInfo(thisSongID);
+		},
+		filters:{
+			timerGsh:function(val){
+				let duration = Math.round(val)
+				let minute = 0
+				let second = 0
+				// console.log(duration,"音频时长")
+				let timer = null
+				while(duration>60){
+					minute++,
+					duration = duration - 60
+				}
+				if(minute<10){
+					minute = "0"+minute
+				}
+				second = duration
+				if(second<10){
+					second = "0"+second
+				}
+				timer = minute + ":" + second
+				return timer
+			}
 		},
 		methods: {
 			navBack() {
@@ -133,12 +159,12 @@
 				innerAudioContext.autoplay = true;
 				innerAudioContext.src = song_url;
 				innerAudioContext.onCanplay(()=>{
-					this.handleDuration(innerAudioContext.duration)
+					this.duration = innerAudioContext.duration
 				})
 				innerAudioContext.onPlay(() => {
 					console.log('开始播放');
 					this.playFlag = true
-					this.dhFlag  = this.playFlag
+					this.playCount()
 				});
 				innerAudioContext.onEnded(()=>{
 					this.nextSong();
@@ -155,8 +181,7 @@
 				console.log(this.playFlag,"进入方法时的FLAG")
 				if(this.playFlag){
 					innerAudioContext.pause();
-					
-					
+					this.playPause()
 				}else{
 					innerAudioContext.play();
 					console.log("继续播放")
@@ -167,52 +192,52 @@
 			},
 			// 播放上一首音乐
 			lastSong(){
+				this.playPause()
+				this.playDuration = 0
 				console.log("上一首");
-				
+				console.log(this.songIndex,"当前歌单数组索引");
 				if(this.songIndex == 0){
 					this.songIndex = this.songsDetail.length-1;
 				}else{
-					this.songIndex = this.songIndex - 1;
+					this.songIndex = parseInt(this.songIndex) - 1;
 				}
-				console.log(this.songIndex);
 				let thisSongID = this.songsDetail[this.songIndex].id;
 				this.getSongUrl(thisSongID);
 				this.getSongInfo(thisSongID);
 			},
 			// 播放下一首音乐
 			nextSong(){
+				this.playPause()
+				this.playDuration = 0
 				console.log("下一首");
+				
 				if(this.songIndex == this.songsDetail.length-1){
 					this.songIndex = 0;
 				}else{
-					this.songIndex = this.songIndex + 1;
+					this.songIndex = parseInt(this.songIndex) + 1;
 				}
-				console.log(this.songIndex);
+				console.log(this.songIndex,"当前歌单数组索引");
 				let thisSongID = this.songsDetail[this.songIndex].id;
 				this.getSongUrl(thisSongID);
 				this.getSongInfo(thisSongID);
 			},
-			// 转换获得音频时长
-			handleDuration(val){
-				let duration = Math.round(val)
-				let minute = 0
-				let second = 0
-				console.log(duration,"音频时长")
-				let timer = null
-				while(duration>60){
-					minute++,
-					duration = duration - 60
-				}
-				if(minute<10){
-					minute = "0"+minute
-				}
-				second = duration
-				if(second<10){
-					second = "0"+second
-				}
-				timer = minute + ":" + second
-				console.log(timer)
-				this.duration = timer
+			//音乐播放计算
+			playCount(){
+				this.timer = setInterval(()=>{
+					this.playDuration++
+				},1000)
+			},
+			//音乐播放计算暂停
+			playPause(){
+				clearInterval(this.timer)
+				this.timer = null
+			},
+			//进度条滑动
+			sliderChange(e){
+				let bfb = e.detail.value*0.01
+				this.playDuration = this.duration * bfb
+				console.log(this.playDuration,'移到到的秒数')
+				innerAudioContext.currentTime = this.playDuration
 			}
 		}
 	}
@@ -232,6 +257,7 @@
 		background: url('https://gimg2.baidu.com/image_search/src=http%3A%2F%2Fpic4.zhimg.com%2F50%2Fv2-358d30ce3efa9beec0ef51e9aa65fdc6_hd.gif&refer=http%3A%2F%2Fpic4.zhimg.com&app=2002&size=f9999,10000&q=a80&n=0&g=0n&fmt=jpeg?sec=1627809488&t=84edab1efc028a9c0b6399941bbebea2');
 		background-size: 100% 100%;
 		background-repeat: no-repeat;
+		// filter: (2px);
 		.navHead {
 			display: flex;
 			// border: 1px solid #007AFF;
@@ -264,27 +290,27 @@
 
 					.top {
 						display: flex;
-						width: calc(100vh*0.5);
+						// width: calc(100vh*0.5);
 						align-items: center;
 						color: #FFFFFF;
 						font-size: 19px;
-						font-weight: 500;
-						overflow: hidden;
-						word-break: keep-all;
-						white-space: nowrap;
-
-						text-overflow: ellipsis ;
 						image {
 							width: 1.5rem;
 							height: 1.5rem;
 						}
-
+						.text{
+							overflow: hidden;
+							word-break: keep-all;
+							white-space: nowrap;
+							text-overflow: ellipsis ;
+						}
 						div:nth-child(1) {
 							font-size: 12px;
 							border: 1px solid #FFFFFF;
 							border-radius: 2px;
 							padding: 0 5px;
 							margin: 0 10px;
+							font-weight: 500;
 							display: flex;
 							justify-content: center;
 							align-items: center;
@@ -298,7 +324,12 @@
 						display: flex;
 						align-items: center;
 						margin-left: 10px;
-
+						.text{
+							overflow: hidden;
+							word-break: keep-all;
+							white-space: nowrap;
+							text-overflow: ellipsis ;
+						}
 						image {
 							width: 12px;
 							height: 12px;
@@ -329,14 +360,12 @@
 			border-radius: 50%;
 			box-shadow: 0 0 8rpx 6rpx #f6f6f6;
 			-webkit-animation-fill-mode:forwards;
+			animation: xuanzhuan 20s linear infinite;
 			image {
 				width: 100%;
 				height: 100%;
 				border-radius: 50%;
 			}
-		}
-		.xuanzhuan{
-			animation: xuanzhuan 20s linear infinite forwards;
 		}
 		.pause{
 		    -webkit-animation-play-state: paused;
@@ -423,5 +452,11 @@
 		100% {
 		    transform: rotateZ(360deg);
 		}
+	}
+	.uni-slider-handle{
+		width: 14px !important;
+		height: 14px !important;
+		margin-top: -7px !important;
+		margin-left: -7px !important;
 	}
 </style>

@@ -156,6 +156,7 @@
 				const res = await this.$myRuquest({
 					url: "/song/detail?ids=" + songIds
 				});
+				console.table(res.data.songs)
 				console.log(res.data.songs);
 				let songsDetail = res.data.songs;
 				//将获取的歌曲详情里所需要的内容存入缓存
